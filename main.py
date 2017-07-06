@@ -11,10 +11,9 @@ import torchvision.utils as vutils
 from torch.autograd import Variable
 
 import numpy as np
-from scipy.optimize import linear_sum_assignment
 import os
 import argparse
-from utils import rand_unit_sphere
+from utils import rand_unit_sphere, calc_optimal_target_permutation
 from custom_sampler import NAT_sampler
 import model.base_model as my_model
 import matplotlib.pyplot as plt
@@ -59,7 +58,7 @@ def weights_init(m):
         m.bias.data.fill_(0)
 
 criterion = nn.MSELoss(size_average=True)
-#optimizer = optim.Adam(model.parameters, opt.lr)
+optimizer = optim.Adam(model.parameters(), opt.lr)
 
 unit_sphere_noises_numpy = rand_unit_sphere(50000)
 unit_sphere_noises = torch.from_numpy(unit_sphere_noises_numpy).float()
@@ -78,12 +77,18 @@ for epoch in range(opt.nEpoch):
         data = data_iter.next()
         a = data[0].numpy().shape[0]
         input = Variable(data[0].cuda())
-        noise_in_this_batch = unit_sphere_noises[i:i+a, :].cuda()
-        targets = Variable(noise_in_this_batch)
+        # extract submatrix r from noise matrix Y
+        noise_in_this_batch = unit_sphere_noises[i:i+a, :]
+        # calculate output y_hat
         output = model(input)
-        #print(output.size())
+        # calculate optimal target assignment within batch
+        noise_in_this_batch = torch.from_numpy(calc_optimal_target_permutation(output.cpu().data.numpy(), noise_in_this_batch.numpy()))
+        #update the global noise matrix Y
+        unit_sphere_noises[i:i + a, :] = noise_in_this_batch
+        targets = Variable(noise_in_this_batch.cuda())
         loss_y = criterion(output, targets)
-        print(loss_y)
+        loss_y.backward()
+        optimizer.step()
         '''
         a = data[0].numpy()[0].transpose(1,2,0)
         plt.figure()

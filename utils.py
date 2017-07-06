@@ -1,8 +1,6 @@
 import numpy as np
 from scipy import misc
-#import cPickle as pickle
-import scipy.optimize
-
+from scipy.optimize import linear_sum_assignment
 #https://github.com/cromulen/noise-as-target/blob/master/src/utils.py
 def rand_unit_sphere(npoints, ndim=100):
     '''
@@ -29,3 +27,14 @@ def shuffle_assigned_noises(noises):
 
     for k, v in zip(keys, values):
         noises[k] = v
+
+def calc_optimal_target_permutation(reps, targets):
+    # Compute cost matrix
+    cost_matrix = np.zeros([reps.shape[0], targets.shape[0]])
+    for i in range(reps.shape[0]):
+        cost_matrix[:, i] = np.sum(np.square(reps-targets[i, :]), axis=1)
+
+    _, col_ind = linear_sum_assignment(cost_matrix)
+    # Permute
+    targets[range(reps.shape[0])] = targets[col_ind]
+    return targets
