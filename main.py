@@ -22,32 +22,34 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='cifar10')
 parser.add_argument('--dataroot', default='/home/goh4hi/cifar10/')
-parser.add_argument('--experiment', default='/home/goh4hi/noise_as_targets/')
+parser.add_argument('--experiment', default='/home/goh4hi/noise_as_targets_fh9/')
 parser.add_argument('--imageSize', type=int, default=32)
 parser.add_argument('--num_ch', type=int, default=3)
 parser.add_argument('--ngpu' , type=int, default=1)
 parser.add_argument('--lr', type=float, default=0.005)
-parser.add_argument('--batchSize', type=float, default=256)
-parser.add_argument('--nEpoch', type=float, default=1)
+parser.add_argument('--batchSize', type=int, default=256)
+parser.add_argument('--nEpoch', type=float, default=100)
+parser.add_argument('--dimnoise', type=int, default=100)
+
 
 opt = parser.parse_args()
 #define model here
-#os.system('mkdir {0}'.format(opt.experiment))
+os.system('mkdir {0}'.format(opt.experiment))
 #model = models.alexnet()
-model = my_model.sanity_model(3)
+model = my_model.sanity_model(opt.dimnoise)
 
 npoints = 50000
 # setup the dataloader and data sampler
 index_list = torch.randperm(npoints)
 my_sampler = NAT_sampler(index_list)
-dataset = dsets.CIFAR10(root=opt.dataroot, train = True, download=False,
+dataset = dsets.CIFAR10(root=opt.dataroot, train=True, download=False,
                         transform=transforms.Compose([
                             transforms.Scale(opt.imageSize),
                             transforms.ToTensor(),
                             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                         ]))
 assert dataset
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize, sampler=my_sampler)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize, sampler=my_sampler, num_workers=2)
 
 def weights_init(m):
     classname = m.__class__.__name__
@@ -61,8 +63,9 @@ criterion = nn.MSELoss(size_average=True)
 optimizer = optim.Adam(model.parameters(), opt.lr)
 
 
-unit_sphere_noises_numpy = rand_unit_sphere(npoints)
+unit_sphere_noises_numpy = rand_unit_sphere(npoints,opt.dimnoise)
 unit_sphere_noises = torch.from_numpy(unit_sphere_noises_numpy).float()
+unit_sphere_noises = unit_sphere_noises[index_list]
 
 input = torch.FloatTensor(opt.batchSize, 3, opt.imageSize, opt.imageSize)
 
@@ -73,7 +76,7 @@ input = input.cuda()
 running_loss = 0
 total_numbatches = round(npoints/opt.batchSize)
 loss_statistics = np.ones(opt.nEpoch)
-for epoch in range(opt.nEpoch):
+for epoch in range(0,opt.nEpoch):
     data_iter = iter(dataloader)
     i = 0
     while i < npoints:
@@ -103,17 +106,17 @@ for epoch in range(opt.nEpoch):
         print(a.shape)
         '''
         i += opt.batchSize
-        print('[%d/%d] Loss: [%f]' % (i, npoints, loss_y.cpu().data.numpy()))
+        print('[%d][%d/%d] Loss: [%f]' % (epoch, i, npoints, loss_y.cpu().data.numpy()))
         running_loss += loss_y.cpu().data.numpy()
     if epoch % 3 == 0:
         index_list = torch.randperm(npoints)
         unit_sphere_noises = unit_sphere_noises[index_list]
         my_sampler.update(index_list)
+        print('Saving State')
         state = {
             'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
         }
-    if epoch % 2 == 0:
         torch.save(state, '{0}/checkpoint_epoch_{1}.t7'.format(opt.experiment, epoch))
     running_loss = running_loss/total_numbatches
     print('Training summary: Epoch [%d] Loss: [%f]' % (epoch,  running_loss))
