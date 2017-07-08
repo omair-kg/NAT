@@ -18,12 +18,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='cifar10')
 parser.add_argument('--dataroot', default='/home/goh4hi/cifar10/')
 parser.add_argument('--experiment', default='/home/goh4hi/noise_as_targets_fh9/')
-parser.add_argument('--modelName', default='checkpoint_epoch_0.t7')
+parser.add_argument('--modelName', default='checkpoint_epoch_99.t7')
 parser.add_argument('--imageSize', type=int, default=32)
 parser.add_argument('--num_ch', type=int, default=3)
 parser.add_argument('--ngpu' , type=int, default=1)
 parser.add_argument('--lr', type=float, default=0.005)
-parser.add_argument('--batchSize', type=float, default=4)
+parser.add_argument('--batchSize', type=float, default=256)
 parser.add_argument('--nEpoch', type=float, default=100)
 
 opt = parser.parse_args()
@@ -33,7 +33,8 @@ model = my_model.sanity_model()
 model.load_state_dict(state['model'])
 model = model.cpu()
 model.eval()
-
+samples = [9000]#1, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000,
+num_NN = 1
 dataset = dsets.CIFAR10(root=opt.dataroot, train=False, download=False,
                         transform=transforms.Compose([
                             transforms.Scale(opt.imageSize),
@@ -46,20 +47,24 @@ dataset_vis = dsets.CIFAR10(root=opt.dataroot, train=False, download=False,
                         ]))
 assert dataset
 a_sampler = torch.utils.data.sampler.SequentialSampler(dataset)
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize, sampler=a_sampler)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize, sampler=a_sampler, num_workers=2)
 
 npoints = len(dataset)
 
-feature_space = np.zeros((opt.batchSize, 2048))
+feature_space = np.zeros((npoints, 2048))
 data_iter = iter(dataloader)
 i = 0
 model = model.cuda()
-while i < 1:
+while i < npoints:
     data = data_iter.next()
     a = data[0].numpy().shape[0]
     input = Variable(data[0].cuda())
     output = model(input)
-    print(output)
     feature_space[i:i+a,:] = output.cpu().data.numpy()
-    i += opt.batchSize
-print(feature_space[0,1])
+    i += a
+for counter,sample in enumerate(samples):
+    feat_without = np.concatenate([feature_space[:sample,:],feature_space[sample+1:,:]],axis=0)
+    for i in range(num_NN):
+        nearest_index = np.sum(np.square(feat_without-feature_space[sample]),axis=1).argmin()
+        print(np.sum(np.square(feat_without-feature_space[sample]),axis=1))
+        print(nearest_index)

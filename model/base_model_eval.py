@@ -4,7 +4,7 @@ import torch.nn.parallel
 
 
 class sanity_model(nn.Module):
-    def __init__(self, in_planes=3):
+    def __init__(self, outplane=100,in_planes=3):
         super(sanity_model, self).__init__()
         ndf = 64
         main = nn.Sequential()
@@ -28,11 +28,11 @@ class sanity_model(nn.Module):
             nn.ReLU(True),
             nn.Dropout(0.5),
             nn.Linear(4096, 2048),
-            nn.ReLU(True)
         )
         classifier = nn.Sequential(
+            nn.ReLU(True),
             nn.Dropout(0.25),
-            nn.Linear(2048, 100),
+            nn.Linear(2048, outplane),
         )
         self.main = main
         self.flatten_feats = flatten_feats
