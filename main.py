@@ -22,18 +22,19 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='cifar10')
 parser.add_argument('--dataroot', default='/home/goh4hi/cifar10/')
-parser.add_argument('--experiment', default='/home/goh4hi/noise_as_targets/')
+parser.add_argument('--experiment', default='default/')
 parser.add_argument('--imageSize', type=int, default=32)
 parser.add_argument('--num_ch', type=int, default=3)
 parser.add_argument('--ngpu' , type=int, default=1)
 parser.add_argument('--lr', type=float, default=0.005)
 parser.add_argument('--batchSize', type=int, default=256)
-parser.add_argument('--nEpoch', type=float, default=100)
+parser.add_argument('--nEpoch', type=int, default=100)
 parser.add_argument('--dimnoise', type=int, default=100)
 
 
 opt = parser.parse_args()
 #define model here
+opt.experiment = '/home/goh4hi/noise_as_targets/{0}'.format(opt.experiment)
 os.system('mkdir {0}'.format(opt.experiment))
 #model = models.alexnet()
 model = my_model.sanity_model(opt.dimnoise)

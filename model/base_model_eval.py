@@ -42,4 +42,6 @@ class sanity_model(nn.Module):
         x = self.main(input)
         x = x.view(x.size(0), -1)
         output = self.flatten_feats(x)
+        #x = self.flatten_feats(x)
+        #output = self.classifier(x)
         return output
