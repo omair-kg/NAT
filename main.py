@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='cifar10')
 parser.add_argument('--dataroot', default='/home/goh4hi/cifar10/')
-parser.add_argument('--experiment', default='/home/goh4hi/noise_as_targets_fh9/')
+parser.add_argument('--experiment', default='/home/goh4hi/noise_as_targets/')
 parser.add_argument('--imageSize', type=int, default=32)
 parser.add_argument('--num_ch', type=int, default=3)
 parser.add_argument('--ngpu' , type=int, default=1)
@@ -46,7 +46,7 @@ dataset = dsets.CIFAR10(root=opt.dataroot, train=True, download=False,
                         transform=transforms.Compose([
                             transforms.Scale(opt.imageSize),
                             transforms.ToTensor(),
-                            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
                         ]))
 assert dataset
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize, sampler=my_sampler, num_workers=2)
@@ -63,7 +63,7 @@ criterion = nn.MSELoss(size_average=True)
 optimizer = optim.Adam(model.parameters(), opt.lr)
 
 
-unit_sphere_noises_numpy = rand_unit_sphere(npoints,opt.dimnoise)
+unit_sphere_noises_numpy = rand_unit_sphere(npoints, opt.dimnoise)
 unit_sphere_noises = torch.from_numpy(unit_sphere_noises_numpy).float()
 unit_sphere_noises = unit_sphere_noises[index_list]
 
@@ -85,26 +85,23 @@ for epoch in range(0,opt.nEpoch):
         a = data[0].numpy().shape[0]
         input = Variable(data[0].cuda())
         # extract submatrix r from noise matrix Y
-        noise_in_this_batch = unit_sphere_noises[i:i+a, :]
+        batch_indices = index_list[i:i+a]
+        noise_in_this_batch = torch.zeros((a,opt.dimnoise))  #unit_sphere_noises[batch_indices, :]
+        for j in range(a): # this loop will fetch the noise vector corresponding to each batch image. Egal in the first in the first epoch
+            noise_in_this_batch[j, :] = unit_sphere_noises[batch_indices[j], :]
         # calculate output y_hat
         output = model(input)
         # calculate optimal target assignment within batch
         noise_in_this_batch = torch.from_numpy(calc_optimal_target_permutation(output.cpu().data.numpy(), noise_in_this_batch.numpy()))
         #update the global noise matrix Y
-        unit_sphere_noises[i:i + a, :] = noise_in_this_batch
+        #unit_sphere_noises[batch_indices, :] = noise_in_this_batch
+        for j in range(a):
+            unit_sphere_noises[batch_indices[j], :] = noise_in_this_batch[j, :]
         targets = Variable(noise_in_this_batch.cuda())
         loss_y = criterion(output, targets)
         loss_y.backward()
         optimizer.step()
-        '''
-        a = data[0].numpy()[0].transpose(1,2,0)
-        plt.figure()
-        plt.imshow(data[0].numpy()[0][0])
-        plt.pause(0.5)
-        plt.imshow(a)
-        plt.show()
-        print(a.shape)
-        '''
+
         i += opt.batchSize
         print('[%d][%d/%d] Loss: [%f]' % (epoch, i, npoints, loss_y.cpu().data.numpy()))
         running_loss += loss_y.cpu().data.numpy()
@@ -122,3 +119,13 @@ for epoch in range(0,opt.nEpoch):
     print('Training summary: Epoch [%d] Loss: [%f]' % (epoch,  running_loss))
     loss_statistics[epoch] = running_loss
     torch.save(loss_statistics, '{0}/loss_statistics.t7'.format(opt.experiment))
+
+'''
+        a = data[0].numpy()[0].transpose(1,2,0)
+        plt.figure()
+        plt.imshow(data[0].numpy()[0][0])
+        plt.pause(0.5)
+        plt.imshow(a)
+        plt.show()
+        print(a.shape)
+'''
