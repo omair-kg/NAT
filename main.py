@@ -16,7 +16,6 @@ import argparse
 from utils import rand_unit_sphere, calc_optimal_target_permutation
 from custom_sampler import NAT_sampler
 import model.base_model as my_model
-import matplotlib.pyplot as plt
 
 # input arguments
 parser = argparse.ArgumentParser()
@@ -33,6 +32,7 @@ parser.add_argument('--dimnoise', type=int, default=100)
 
 
 opt = parser.parse_args()
+
 #define model here
 opt.experiment = '/home/goh4hi/noise_as_targets/{0}'.format(opt.experiment)
 os.system('mkdir {0}'.format(opt.experiment))
@@ -51,14 +51,6 @@ dataset = dsets.CIFAR10(root=opt.dataroot, train=True, download=False,
                         ]))
 assert dataset
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize, sampler=my_sampler, num_workers=2)
-
-def weights_init(m):
-    classname = m.__class__.__name__
-    if classname.find('Conv') != -1:
-        m.weight.data.normal_(0.0, 0.02)
-    elif classname.find('BatchNorm') != -1:
-        m.weight.data.normal_(1.0, 0.02)
-        m.bias.data.fill_(0)
 
 criterion = nn.MSELoss(size_average=True)
 optimizer = optim.Adam(model.parameters(), opt.lr)
@@ -87,17 +79,20 @@ for epoch in range(0,opt.nEpoch):
         input = Variable(data[0].cuda())
         # extract submatrix r from noise matrix Y
         batch_indices = index_list[i:i+a]
-        noise_in_this_batch = torch.zeros((a,opt.dimnoise))  #unit_sphere_noises[batch_indices, :]
-        for j in range(a): # this loop will fetch the noise vector corresponding to each batch image. Egal in the first in the first epoch
+        noise_in_this_batch = torch.zeros((a, opt.dimnoise))
+        # this loop will fetch the noise vector corresponding to each batch image. Egal in the first epoch
+        for j in range(a):
             noise_in_this_batch[j, :] = unit_sphere_noises[batch_indices[j], :]
         # calculate output y_hat
         output = model(input)
+        # if statement is to enforce hungarian reassignment every x epoch
+        #if (epoch)%3 == 0:
         # calculate optimal target assignment within batch
         noise_in_this_batch = torch.from_numpy(calc_optimal_target_permutation(output.cpu().data.numpy(), noise_in_this_batch.numpy()))
         #update the global noise matrix Y
-        #unit_sphere_noises[batch_indices, :] = noise_in_this_batch
         for j in range(a):
             unit_sphere_noises[batch_indices[j], :] = noise_in_this_batch[j, :]
+
         targets = Variable(noise_in_this_batch.cuda())
         loss_y = criterion(output, targets)
         loss_y.backward()
@@ -111,11 +106,11 @@ for epoch in range(0,opt.nEpoch):
         unit_sphere_noises = unit_sphere_noises[index_list]
         my_sampler.update(index_list)
         print('Saving State')
-        state = {
-            'model': model.state_dict(),
-            'optimizer': optimizer.state_dict(),
-        }
-        torch.save(state, '{0}/checkpoint_epoch_{1}.t7'.format(opt.experiment, epoch))
+    state = {
+           'model': model.state_dict(),
+           'optimizer': optimizer.state_dict(),
+            }
+    torch.save(state, '{0}/checkpoint_epoch_{1}.t7'.format(opt.experiment, epoch))
     running_loss = running_loss/total_numbatches
     print('Training summary: Epoch [%d] Loss: [%f]' % (epoch,  running_loss))
     loss_statistics[epoch] = running_loss
