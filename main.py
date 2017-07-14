@@ -38,7 +38,7 @@ opt.experiment = '/home/goh4hi/noise_as_targets/{0}'.format(opt.experiment)
 os.system('mkdir {0}'.format(opt.experiment))
 #model = models.alexnet()
 model = my_model.sanity_model(opt.dimnoise)
-
+'''
 npoints = 50000
 # setup the dataloader and data sampler
 index_list = torch.randperm(npoints)
@@ -115,7 +115,7 @@ for epoch in range(0,opt.nEpoch):
     print('Training summary: Epoch [%d] Loss: [%f]' % (epoch,  running_loss))
     loss_statistics[epoch] = running_loss
     torch.save(loss_statistics, '{0}/loss_statistics.t7'.format(opt.experiment))
-
+'''
 '''
         a = data[0].numpy()[0].transpose(1,2,0)
         plt.figure()
