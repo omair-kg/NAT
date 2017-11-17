@@ -25,10 +25,12 @@ def rand_unit_sphere(n, z=100):
 def calc_optimal_target_permutation(reps, targets):
     # Compute cost matrix
     cost_matrix = np.zeros([reps.shape[0], targets.shape[0]])
+    #cost_matrix = np.dot(reps, np.transpose(targets))
     for i in range(reps.shape[0]):
-        cost_matrix[:, i] = np.sum(np.square(reps-targets[i, :]), axis=1)
+       cost_matrix[:, i] = np.sum(np.square(reps-targets[i, :]), axis=1)
 
     _, col_ind = linear_sum_assignment(cost_matrix)
     # Permute
     targets[range(reps.shape[0])] = targets[col_ind]
     return targets
+

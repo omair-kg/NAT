@@ -13,7 +13,7 @@ from torch.autograd import Variable
 from custom_sampler import NAT_sampler
 import numpy as np
 import argparse
-import model.base_model_eval as my_model
+import model.base_model as my_model
 import h5py
 import os
 
@@ -56,7 +56,7 @@ dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize, samp
 
 npoints = len(dataset)
 
-feature_space = np.zeros((npoints, 2048))
+feature_space = np.zeros((npoints, 100))
 data_iter = iter(dataloader)
 i = 0
 model = model.cuda()

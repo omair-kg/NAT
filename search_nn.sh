@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for i in `seq 0 3 30`; do
-    CUDA_VISIBLE_DEVICES=3 python find_NN.py --experiment debug/ --modelName ${i}
+for i in `seq 13 1 99`; do
+    CUDA_VISIBLE_DEVICES=5 python find_NN.py --experiment noise_shuffle_bug/ --modelName ${i}
 done
 
