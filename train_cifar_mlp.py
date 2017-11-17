@@ -1,20 +1,15 @@
+import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.init as init
-import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.utils.data
-import torchvision.transforms as transforms
 import torchvision.datasets as dsets
-import torchvision.models as models
-import torchvision.utils as vutils
+import torchvision.transforms as transforms
 from torch.autograd import Variable
 
-import numpy as np
-import os
-import argparse
-import model.base_model as my_model
-import h5py
+import base_model as my_model
+from utils import convert_grayScale
+
 
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
@@ -32,16 +27,20 @@ def accuracy(output, target, topk=(1,)):
     return res
 
 def train_mlp(opt,model,main_epoch):
+    pre_model = my_model.gray_scale_net()
     training_logger_text = open('{0}/train_log_{1}.txt'.format(opt.experiment,main_epoch), 'w')
     val_logger_text = open('{0}/val_log_{1}.txt'.format(opt.experiment,main_epoch), 'w')
     mlp = my_model.mlp()
     model.eval()
+    pre_model.eval()
+    pre_model.cuda()
     mlp.cuda()
     dataset = dsets.CIFAR10(root=opt.dataroot, train=True, download=False,
                             transform=transforms.Compose([
                                 transforms.Scale(opt.imageSize),
                                 transforms.ToTensor(),
-                                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+                                convert_grayScale(),
+                                #transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
                             ]))
     assert dataset
 
@@ -49,7 +48,8 @@ def train_mlp(opt,model,main_epoch):
                             transform=transforms.Compose([
                                 transforms.Scale(opt.imageSize),
                                 transforms.ToTensor(),
-                                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+                                convert_grayScale(),
+                                #transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
                             ]))
     assert dataset_val
     npoints = len(dataset)
@@ -79,7 +79,8 @@ def train_mlp(opt,model,main_epoch):
             data = data_iter.next()
             input = Variable(data[0].cuda())
             target = Variable(data[1].cuda())
-            noise_output = model(input)
+            int_input = pre_model(input)
+            noise_output = model(int_input)
             output = mlp(noise_output)
             loss = criterion(output,target)
             loss.backward()
@@ -108,7 +109,8 @@ def train_mlp(opt,model,main_epoch):
             data = data_iter.next()
             input = Variable(data[0].cuda())
             target = Variable(data[1].cuda())
-            noise_output = model(input)
+            int_input = pre_model(input)
+            noise_output = model(int_input)
             output = mlp(noise_output)
             loss = criterion(output, target)
             prec1 = accuracy(output.data, target.data, topk=(1,))

@@ -1,21 +1,14 @@
-import torch
-import torch.nn as nn
-import torch.nn.init as init
-import torch.backends.cudnn as cudnn
-import torch.optim as optim
+import argparse
+import os
+
+import h5py
+import numpy as np
 import torch.utils.data
-import torchvision.transforms as transforms
 import torchvision.datasets as dsets
-import torchvision.models as models
-import torchvision.utils as vutils
+import torchvision.transforms as transforms
 from torch.autograd import Variable
 
-from custom_sampler import NAT_sampler
-import numpy as np
-import argparse
-import model.base_model as my_model
-import h5py
-import os
+import base_model as my_model
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='cifar10')

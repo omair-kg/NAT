@@ -1,28 +1,27 @@
-import torch
 import torch.nn as nn
-import torch.nn.init as init
-import torch.backends.cudnn as cudnn
+import argparse
+import copy
+import os
+
+
+import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
-import torchvision.transforms as transforms
 import torchvision.datasets as dsets
-import torchvision.models as models
-import torchvision.utils as vutils
+import torchvision.transforms as transforms
 from torch.autograd import Variable
 from torch.optim.lr_scheduler import StepLR as schedule_lr
 
 import numpy as np
-import os
-import argparse
-from utils import rand_unit_sphere, calc_optimal_target_permutation
-from custom_sampler import NAT_sampler
-import model.base_model as my_model
 import train_cifar_mlp
-import copy
+from custom_sampler import NAT_sampler
+from utils import rand_unit_sphere, calc_optimal_target_permutation,convert_grayScale
+import base_model as my_model
+
 # input arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='cifar10')
-parser.add_argument('--dataroot', default='/home/goh4hi/cifar10/')
+parser.add_argument('--dataroot', default='/mnt/data1/goh4hi/cifar10/')
 parser.add_argument('--experiment', default='default_vgg/')
 parser.add_argument('--imageSize', type=int, default=32)
 parser.add_argument('--num_ch', type=int, default=3)
@@ -38,7 +37,7 @@ parser.add_argument('--resume_index', type=int)
 opt = parser.parse_args()
 
 #define model here
-opt.experiment = '/home/goh4hi/noise_as_targets/{0}'.format(opt.experiment)
+opt.experiment = '/mnt/data1/goh4hi/Nets/pytorch/{0}'.format(opt.experiment)
 os.system('mkdir {0}'.format(opt.experiment))
 # open logger text file
 if opt.resume:
@@ -47,7 +46,8 @@ else:
     logger_text = open('{0}/log.txt'.format(opt.experiment), 'w')
 
 #model = models.alexnet()
-model = my_model.sanity_model(opt.dimnoise)
+pre_model = my_model.gray_scale_net()
+model = my_model.sanity_model(opt.dimnoise,in_planes=2)
 for parameter in model.parameters():
     print(len(parameter))
 
@@ -55,11 +55,12 @@ npoints = 50000
 # setup the dataloader and data sampler
 index_list = torch.randperm(npoints)
 my_sampler = NAT_sampler(index_list)
-dataset = dsets.CIFAR10(root=opt.dataroot, train=True, download=False,
+dataset = dsets.CIFAR10(root=opt.dataroot, train=True, download=True,
                         transform=transforms.Compose([
                             transforms.Scale(opt.imageSize),
                             transforms.ToTensor(),
-                            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+                            convert_grayScale(),
+                            #transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
                         ]))
 assert dataset
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize, sampler=my_sampler, num_workers=2)
@@ -86,10 +87,11 @@ if opt.resume:
 input = torch.FloatTensor(opt.batchSize, 3, opt.imageSize, opt.imageSize)
 
 # convert everything to cuda
+pre_model.cuda()
 model.cuda()
 input = input.cuda()
 
-scheduler = schedule_lr(optimizer, step_size=50, gamma=0.75)
+scheduler = schedule_lr(optimizer, step_size=75, gamma=0.75)
 
 total_numbatches = round(npoints/opt.batchSize)
 loss_statistics = np.ones(opt.nEpoch)
@@ -111,7 +113,8 @@ for epoch in range(start_from,opt.nEpoch):
         for j in range(a):
             noise_in_this_batch[j, :] = unit_sphere_noises[batch_indices[j], :]
         # calculate output y_hat
-        output = model(input)
+        int_input = pre_model(input)
+        output = model(int_input)
 
         # if statement is to enforce hungarian reassignment every x epoch
         if (epoch+1)%3 == 0:

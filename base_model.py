@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.parallel
+import numpy as np
 
 
 class sanity_model(nn.Module):
@@ -112,3 +113,25 @@ class mlp(nn.Module):
     def forward(self,input):
         x = self.mlp(input)
         return x
+
+class gray_scale_net(nn.Module):
+    def __init__(self):
+        super(gray_scale_net,self).__init__()
+        main= nn.Sequential()
+        main.add_module('edge_conv_layer', nn.Conv2d(1, 2, 3, 1, 1, bias=False))
+        for param in main.parameters():
+            param.requires_grad = False
+        for layer in main.modules():
+            if isinstance(layer, nn.Conv2d):
+                a = torch.from_numpy(np.array([[0.1, 0, -0.1], [0.2, 0, -0.2], [0.1, 0, -0.1]]))
+                a = a.float()
+                layer.weight[0] = torch.unsqueeze(a, 0)
+
+                a = torch.from_numpy(np.array([[0.1, 0.2, 0.1], [0, 0, 0], [-0.1, -0.2, -0.1]]))
+                a = a.float()
+                layer.weight[1] = torch.unsqueeze(a, 0)
+        self.main = main
+
+    def forward(self,input):
+        output = self.main(input)
+        return output

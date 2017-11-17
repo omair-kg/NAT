@@ -1,21 +1,16 @@
-import torch
-import torch.nn as nn
-import torch.nn.init as init
-import torch.backends.cudnn as cudnn
-import torch.optim as optim
-import torch.utils.data
-import torchvision.transforms as transforms
-import torchvision.datasets as dsets
-import torchvision.models as models
-import torchvision.utils as vutils
-from torch.autograd import Variable
+import argparse
+import itertools
+import os
 
 import numpy as np
-import os
-import argparse
-import model.base_model as my_model
-import h5py
-import itertools
+import torch.nn as nn
+import torch.optim as optim
+import torch.utils.data
+import torchvision.datasets as dsets
+import torchvision.transforms as transforms
+from torch.autograd import Variable
+
+import base_model as my_model
 
 # input arguments
 parser = argparse.ArgumentParser()

@@ -1,4 +1,7 @@
 import numpy as np
+import torch
+import torch.nn as nn
+
 from scipy import misc
 from scipy.optimize import linear_sum_assignment
 #https://github.com/cromulen/noise-as-target/blob/master/src/utils.py
@@ -33,4 +36,14 @@ def calc_optimal_target_permutation(reps, targets):
     # Permute
     targets[range(reps.shape[0])] = targets[col_ind]
     return targets
+
+class convert_grayScale(object):
+
+    def __call__(self,im):
+        ch, h, w = im.size()
+        im_ = im.clone()
+        im_ = im_.numpy()
+        gray_im = torch.from_numpy(np.mean(im_,axis=0))
+        gray_im = torch.unsqueeze(gray_im, 0)
+        return gray_im
 
