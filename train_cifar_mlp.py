@@ -30,7 +30,7 @@ def train_mlp(opt,model,main_epoch):
     pre_model = my_model.gray_scale_net()
     training_logger_text = open('{0}/train_log_{1}.txt'.format(opt.experiment,main_epoch), 'w')
     val_logger_text = open('{0}/val_log_{1}.txt'.format(opt.experiment,main_epoch), 'w')
-    mlp = my_model.mlp()
+    mlp = my_model.mlp(outplane=opt.dimnoise)
     model.eval()
     pre_model.eval()
     pre_model.cuda()

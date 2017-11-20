@@ -96,10 +96,10 @@ class sanity_model(nn.Module):
         return output
 
 class mlp(nn.Module):
-    def __init__(self):
+    def __init__(self,outplane):
         super(mlp, self).__init__()
         classifier = nn.Sequential(
-            nn.Linear(100, 256),
+            nn.Linear(outplane, 256),
             nn.ReLU(True),
             nn.Dropout(p=0.5),
             nn.Linear(256, 10),
